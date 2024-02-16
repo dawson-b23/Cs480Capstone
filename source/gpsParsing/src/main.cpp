@@ -2,7 +2,7 @@
 #include "TinyGPS++.h"
 #include <SoftwareSerial.h>
 
-SoftwareSerial SoftSerial(9, 8);
+SoftwareSerial SoftSerial(8, 9);
 TinyGPSPlus parser;
 
 
@@ -26,8 +26,7 @@ void loop() {
     Serial.print("Long: ");
     Serial.println(parser.location.lng());
     Serial.println();
-
   }
   //Serial.println();
-  delay(1500);
+  delay(500);
 }
