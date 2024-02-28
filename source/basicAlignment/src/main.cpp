@@ -6,9 +6,11 @@
 TinyGPSPlus laserGPS;
 //(rx, tx)
 SoftwareSerial laserSerial(13, 12);
+//these are digital io ports connected to the gps module for the light source
 
 TinyGPSPlus robotGPS;
 SoftwareSerial robotSerial(8, 9);
+//digital io ports connected to light receiver gps module
 
 xArmServoController arm(xArm, Serial1);
 
@@ -40,10 +42,15 @@ void loop() {
     }
     if(laserGPS.location.isUpdated()) {
       phase++;
+
+      //only one software serial can be open for receiving input at once
+      //with more than one open, only one will actually receive data
+      //to be certain the right one receives data, close the old one
       laserSerial.end();
       robotSerial.begin(9600);
-      Serial.print("Laser location obtained, HDOP ");
-      Serial.print(laserGPS.hdop.hdop(), 20);
+
+      Serial.print("Laser location obtained");
+      //Serial.print(laserGPS.hdop.hdop(), 20);
       Serial.println(": ");
       lsrLat = laserGPS.location.lat();
       lsrLng = laserGPS.location.lng();
@@ -63,11 +70,12 @@ void loop() {
       robotGPS.encode(charRead);
     }
     if(robotGPS.location.isUpdated()) {
+      //right now, it cycles back to the first phase, to gather more location samples
       phase = 0;
       robotSerial.end();
       laserSerial.begin(9600);
-      Serial.print("Robot location obtained, HDOP ");
-      Serial.print(robotGPS.hdop.hdop(), 20);
+      Serial.print("Robot location obtained");
+      //Serial.print(robotGPS.hdop.hdop(), 20);
       Serial.println(": ");
       rbtLat = robotGPS.location.lat();
       rbtLng = robotGPS.location.lng();
@@ -106,6 +114,7 @@ void loop() {
   if(phase == 2) {
     return;
     Serial.println("Phase 2");
+    //This should move the robot to face along the vector from robot to laser
     arm.setPosition(5, 0, 1500, true);
     delay(2500);
     arm.setPosition(5, 100, 1500, true);
