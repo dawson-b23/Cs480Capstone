@@ -3,24 +3,25 @@
 
 #include "Adafruit_TSL2591.h"
 
-#define SENSOR_VALUE (analogRead(A4))
-
 Adafruit_TSL2591 lightSensor(2);
-
 #define SENSOR_VALUE (lightSensor.getLuminosity(TSL2591_VISIBLE))
+//in the final low-gain search, what luminosity value is the threshold to stop searching?
+#define SENSOR_LASER_THRESHOLD (2000)
 
 #define X_ID (2)
 #define R_ID (4)
 #define Y_ID (5)
 
+//step size for initial r-search
 #define MEDSTEP (10)
+
 #define SMALLSTEP (5)
 //search whole axis
 #define MEDRADIUS (1000)
 //search only smaller band after
 #define SMALLRADIUS (250)
 
-#define TIME_RATIO (5)
+#define TIME_RATIO (2)
 
 //midpoints:
 //500
@@ -29,7 +30,10 @@ Adafruit_TSL2591 lightSensor(2);
 
 xArmServoController arm(xArm, Serial1);
 
+//current servo position on each axis
 int positions[6] = {0, 0, 0, 0, 0, 0};
+//lower/upper bounds of each servo axis
+int bounds[6][2];
 
 void initialPosition();
 
@@ -65,9 +69,9 @@ void loop() {
 
   lightSensor.setGain(TSL2591_GAIN_LOW);
   int radius = SMALLRADIUS;
-  while(lightSensor.getLuminosity(TSL2591_VISIBLE) < 2000) {
-    optimizeAxis(X_ID, SMALLSTEP, radius);
-    optimizeAxis(Y_ID, SMALLSTEP, radius);
+  while(SENSOR_VALUE < SENSOR_LASER_THRESHOLD) {
+    optimizeAxis(X_ID, SMALLSTEP, MEDRADIUS);
+    optimizeAxis(Y_ID, SMALLSTEP, MEDRADIUS);
     optimizeAxis(R_ID, SMALLSTEP, radius);
     radius -= SMALLSTEP;
   }
@@ -82,7 +86,7 @@ void loop() {
   Serial.print("   Y: ");
   Serial.println(positions[Y_ID]);
   Serial.print("Luminosity:");
-  Serial.println(lightSensor.getLuminosity(TSL2591_VISIBLE));
+  Serial.println(SENSOR_VALUE);
   while(1) { delay(5); }
 }
 
@@ -96,6 +100,15 @@ void initialPosition() {
   arm.setPosition(X_ID, positions[X_ID], 1500, true);
   arm.setPosition(R_ID, positions[R_ID], 1500, true);
   arm.setPosition(Y_ID, positions[Y_ID], 1500, true);
+
+  for(int i = 0; i < 6; i++) {
+    bounds[i][0] = 0;
+    bounds[i][1] = 1000;
+  }
+  //when the y-servo moves too low, causes physical problems with robot alignment
+  //constrain the upper extent of the y axis to prevent that
+  bounds[Y_ID][0] = 200;
+  bounds[R_ID][1] = 1000;
 }
 
 void optimizeAxis(int axis, int stepSize, int radius) {
@@ -106,9 +119,9 @@ void optimizeAxis(int axis, int stepSize, int radius) {
 
   int initialPosition = positions[axis];
   int brightestPosition = initialPosition;
+  int distance;
   uint16_t brightest, measured, initialLight;
-  measured = lightSensor.getLuminosity(TSL2591_VISIBLE);
-  //measured = SENSOR_VALUE;
+  measured = SENSOR_VALUE;
   initialLight = measured;
   brightest = measured;
   Serial.print("Initial light: ");
@@ -120,39 +133,44 @@ void optimizeAxis(int axis, int stepSize, int radius) {
   do {
     positions[axis] = positions[axis] - stepSize;
     arm.setPosition(axis, positions[axis], (stepSize * TIME_RATIO), true);
-    //measured = SENSOR_VALUE;
-    measured = lightSensor.getLuminosity(TSL2591_VISIBLE);
+    measured = SENSOR_VALUE;
     Serial.print("   Measured luminosity ");
     Serial.println(measured);
     if(measured > brightest) {
       brightestPosition = positions[axis];
       brightest = measured;
     }
-  } while(positions[axis] > (initialPosition - radius) && positions[axis] > stepSize);
+  } while(positions[axis] > (initialPosition - radius) && positions[axis] > (bounds[axis][0] + stepSize));
 
   Serial.print("Finished decreasing axis to ");
   Serial.print(positions[axis]);
   Serial.print(", returning to initial position of ");
   Serial.println(initialPosition);
-  arm.setPosition(axis, initialPosition, 1500, true);
+
+  distance = (positions[axis] - initialPosition) / 2;
+  if(distance < 0) { distance *= -1; }
+  //arm.setPosition(axis, initialPosition, distance * TIME_RATIO, true);
+  arm.setPosition(axis, initialPosition, 2000, true);
   positions[axis] = initialPosition;
   do {
     positions[axis] = positions[axis] + stepSize;
     arm.setPosition(axis, positions[axis], (stepSize * TIME_RATIO), true);
-    measured = lightSensor.getLuminosity(TSL2591_VISIBLE);
-    //measured = SENSOR_VALUE;
+    measured = SENSOR_VALUE;
     Serial.print("   Measured luminosity ");
     Serial.println(measured);
     if(measured > brightest) {
       brightestPosition = positions[axis];
       brightest = measured;
     }
-  } while(positions[axis] < (initialPosition + radius) && positions[axis] < (1000 - stepSize));
+  } while(positions[axis] < (initialPosition + radius) && positions[axis] < (bounds[axis][1] - stepSize));
   Serial.print("Finished increasing axis to ");
   Serial.print(positions[axis]);
   Serial.print(", returning to brightest position of ");
   Serial.println(brightestPosition);
 
+  distance = (positions[axis] - brightest) / 2;
+  if(distance < 0) { distance *= -1; }
   positions[axis] = brightestPosition;
-  arm.setPosition(axis, positions[axis], 1500, true);
+  //arm.setPosition(axis, positions[axis], distance * TIME_RATIO, true);
+  arm.setPosition(axis, positions[axis], 2000, true);
 }
