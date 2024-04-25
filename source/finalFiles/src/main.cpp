@@ -16,7 +16,7 @@ Adafruit_TSL2591 lightSensor(2);
 #define MEDSTEP (10)
 
 #define SMALLSTEP (5)
-//search whole axis
+
 #define MEDRADIUS (1000)
 //search only smaller band after
 #define SMALLRADIUS (250)
@@ -59,6 +59,17 @@ void loop() {
   //optimizeAxis(X_ID, SMALLSTEP);
   //optimizeAxis(Y_ID, SMALLSTEP);
 
+  /*
+  int i = 0;
+  while(i < 5) {
+      Serial.println(SENSOR_VALUE);
+      delay(1000);
+      i++;
+  }
+  */
+  //lightSensor.setTiming(TSL2591_INTEGRATIONTIME_200MS);
+  //Serial.println(lightSensor.getTiming());
+
   optimizeAxis(R_ID, MEDSTEP, MEDRADIUS);
   //optimizeAxis(X_ID, MEDSTEP, MEDRADIUS);
   //optimizeAxis(Y_ID, MEDSTEP, MEDRADIUS);
@@ -68,12 +79,18 @@ void loop() {
   Serial.println("--------------------");
 
   lightSensor.setGain(TSL2591_GAIN_LOW);
-  int radius = SMALLRADIUS;
+  lightSensor.setGain(TSL2591_GAIN_LOW);
+  lightSensor.setGain(TSL2591_GAIN_LOW);
+  int radius = MEDRADIUS;
+  int i = 0;
+  int axes[3] = {X_ID, Y_ID, R_ID};
   while(SENSOR_VALUE < SENSOR_LASER_THRESHOLD) {
-    optimizeAxis(X_ID, SMALLSTEP, MEDRADIUS);
-    optimizeAxis(Y_ID, SMALLSTEP, MEDRADIUS);
-    optimizeAxis(R_ID, SMALLSTEP, radius);
+    Serial.print("GAIN VALUE: ");
+    Serial.println(lightSensor.getGain());
+    optimizeAxis(axes[i], SMALLSTEP, radius);
     radius -= SMALLSTEP;
+    i++;
+    i = i % 3;
   }
   Serial.println("-----------------------");
   Serial.println("-----------------------");
@@ -140,6 +157,7 @@ void optimizeAxis(int axis, int stepSize, int radius) {
       brightestPosition = positions[axis];
       brightest = measured;
     }
+    //delay(300);
   } while(positions[axis] > (initialPosition - radius) && positions[axis] > (bounds[axis][0] + stepSize));
 
   Serial.print("Finished decreasing axis to ");
@@ -162,6 +180,7 @@ void optimizeAxis(int axis, int stepSize, int radius) {
       brightestPosition = positions[axis];
       brightest = measured;
     }
+    //delay(300);
   } while(positions[axis] < (initialPosition + radius) && positions[axis] < (bounds[axis][1] - stepSize));
   Serial.print("Finished increasing axis to ");
   Serial.print(positions[axis]);
