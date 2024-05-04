@@ -1,0 +1,5 @@
+This folder needs the required documents 
+- Bill of materials with chosen vendors and costs
+- engineering drawing package
+
+Our project, developed for Hansen Photonics Inc., focused on the proof of concept for an optical intensity-based alignment system. As a proof of concept project, our primary objective was to demonstrate the feasibility and functionality of the proposed solution rather than to produce a finalized product for mass production. Given this focus, the project did not require a bill of materials or an extensive engineering drawing package typically associated with full-scale production. Instead, our emphasis was on prototyping, testing, and validating the concept to showcase its viability and potential benefits. This approach allowed us to prioritize innovation and rapid iteration, aligning closely with the needs and objectives of Hansen Photonics Inc. as they explore new technological advancements in optical communication devices.
